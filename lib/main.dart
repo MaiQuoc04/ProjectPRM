@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:provider/provider.dart';
 
 import 'core/theme/app_theme.dart';
@@ -7,11 +8,10 @@ import 'core/routes/app_router.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // TODO: Thay thế bằng thông tin kết nối Supabase thật của bạn
-  // await Supabase.initialize(
-  //   url: 'YOUR_SUPABASE_URL',
-  //   anonKey: 'YOUR_SUPABASE_ANON_KEY',
-  // );
+  await Supabase.initialize(
+    url: 'https://tiffncacprawnjcwdejg.supabase.co',
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZmZuY2FjcHJhd25qY3dkZWpnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2OTQ4NzIsImV4cCI6MjA5MjI3MDg3Mn0.luKd2bqpnuaEZfQYTRCOLY4JnIzOX6ilMU7bmTswYOs',
+  );
 
   runApp(const DatingApp());
 }

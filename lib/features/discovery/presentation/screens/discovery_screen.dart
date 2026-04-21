@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:appinio_swiper/appinio_swiper.dart';
-import '../../../../core/theme/app_colors.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../../../services/discovery_service.dart';
+import '../../../profile/presentation/screens/view_profile_screen.dart';
 
 class DiscoveryScreen extends StatefulWidget {
   const DiscoveryScreen({super.key});
@@ -10,165 +12,420 @@ class DiscoveryScreen extends StatefulWidget {
   State<DiscoveryScreen> createState() => _DiscoveryScreenState();
 }
 
-class _DiscoveryScreenState extends State<DiscoveryScreen> {
-  final AppinioSwiperController controller = AppinioSwiperController();
-  
-  // Mock Data
-  final List<Map<String, dynamic>> profiles = [
-    {
-      'name': 'Hương Nguyễn',
-      'age': 22,
-      'bio': 'Yêu chó mèo, thích đi dạo bờ hồ',
-      'imageUrl': 'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
-    },
-    {
-      'name': 'Lan Anh',
-      'age': 24,
-      'bio': 'Coffee & Books',
-      'imageUrl': 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
-    },
-    {
-      'name': 'Thảo Lê',
-      'age': 21,
-      'bio': 'Thích du lịch, ẩm thực',
-      'imageUrl': 'https://images.unsplash.com/photo-1517841905240-472988babdf9?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60',
-    },
+class _DiscoveryScreenState extends State<DiscoveryScreen>
+    with SingleTickerProviderStateMixin {
+  final DiscoveryService _discoveryService = DiscoveryService();
+
+  late TabController _tabController;
+
+  final List<Map<String, String>> _tabs = [
+    {'label': '♀ Nữ', 'gender': 'Nữ'},
+    {'label': '♂ Nam', 'gender': 'Nam'},
+    {'label': '⚧ Khác', 'gender': 'Khác'},
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: _tabs.length, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Dating App', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 24)),
+        title: const Text(
+          'Dating App',
+          style: TextStyle(
+            color: AppColors.primary,
+            fontWeight: FontWeight.bold,
+            fontSize: 24,
+          ),
+        ),
         centerTitle: true,
         leading: IconButton(
-          icon: const Icon(Icons.person, color: Colors.grey),
-          onPressed: () {
-            // Mở profile preferences
-          },
+          icon: const Icon(Icons.person_outline, color: Colors.grey),
+          onPressed: () => context.push('/profile'),
         ),
         actions: [
           IconButton(
-            icon: const Icon(Icons.chat_bubble, color: Colors.grey),
-            onPressed: () {
-              // Mở màn hình chat
-              context.go('/matches');
-            },
-          )
+            icon: const Icon(Icons.chat_bubble_outline, color: Colors.grey),
+            onPressed: () => context.go('/matches'),
+          ),
         ],
+        bottom: TabBar(
+          controller: _tabController,
+          labelColor: AppColors.primary,
+          unselectedLabelColor: Colors.grey,
+          indicatorColor: AppColors.primary,
+          indicatorWeight: 3,
+          labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+          tabs: _tabs
+              .map((t) => Tab(text: t['label']))
+              .toList(),
+        ),
       ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: AppinioSwiper(
-                controller: controller,
-                cardCount: profiles.length,
-                onSwipeEnd: _onSwipeEnd,
-                cardBuilder: (BuildContext context, int index) {
-                  return _buildCard(profiles[index]);
-                },
+      body: TabBarView(
+        controller: _tabController,
+        children: _tabs
+            .map((t) => _GenderSwipeTab(
+                  gender: t['gender']!,
+                  discoveryService: _discoveryService,
+                ))
+            .toList(),
+      ),
+    );
+  }
+}
+
+/// Widget riêng cho từng tab giới tính — mỗi tab có stack thẻ riêng
+class _GenderSwipeTab extends StatefulWidget {
+  final String gender;
+  final DiscoveryService discoveryService;
+
+  const _GenderSwipeTab({
+    required this.gender,
+    required this.discoveryService,
+  });
+
+  @override
+  State<_GenderSwipeTab> createState() => _GenderSwipeTabState();
+}
+
+class _GenderSwipeTabState extends State<_GenderSwipeTab>
+    with AutomaticKeepAliveClientMixin {
+  final AppinioSwiperController _controller = AppinioSwiperController();
+  List<Map<String, dynamic>> _profiles = [];
+  bool _isLoading = true;
+
+  @override
+  bool get wantKeepAlive => true; // Giữ state khi chuyển tab
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProfiles();
+  }
+
+  Future<void> _loadProfiles() async {
+    setState(() => _isLoading = true);
+    try {
+      final data = await widget.discoveryService
+          .getDiscoveryProfiles(genderFilter: widget.gender);
+      setState(() => _profiles = data);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Lỗi: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _onSwipeEnd(
+      int previousIndex, int targetIndex, SwiperActivity activity) async {
+    if (activity is Swipe) {
+      final isLike = activity.direction == AxisDirection.right;
+      final swipedProfile = _profiles[previousIndex];
+      final swipedId = swipedProfile['id'];
+
+      try {
+        final matchId =
+            await widget.discoveryService.recordSwipe(swipedId, isLike);
+
+        if (matchId != null && mounted) {
+          _showMatchDialog(swipedProfile, matchId);
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Lỗi khi ghi nhận swipe: $e')),
+          );
+        }
+      }
+    }
+  }
+
+  void _showMatchDialog(Map<String, dynamic> profile, String matchId) {
+    final avatarUrl = (profile['avatar_urls'] != null &&
+            (profile['avatar_urls'] as List).isNotEmpty)
+        ? profile['avatar_urls'][0] as String
+        : null;
+    final name = profile['full_name'] ?? 'người ấy';
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogCtx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ShaderMask(
+                shaderCallback: (bounds) =>
+                    AppColors.primaryGradient.createShader(bounds),
+                child: const Text(
+                  '🎉 It\'s a Match!',
+                  style: TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
               ),
-            ),
-            _buildBottomButtons(),
-          ],
+              const SizedBox(height: 12),
+              if (avatarUrl != null)
+                CircleAvatar(
+                  radius: 45,
+                  backgroundImage: NetworkImage(avatarUrl),
+                )
+              else
+                const CircleAvatar(
+                  radius: 45,
+                  child: Icon(Icons.person, size: 45),
+                ),
+              const SizedBox(height: 12),
+              Text(
+                'Bạn và $name cùng thích nhau!',
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 16),
+              ),
+              const SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(dialogCtx),
+                      child: const Text('Để sau'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      icon: const Icon(Icons.chat_bubble_outline, size: 18),
+                      label: const Text('Nhắn tin'),
+                      onPressed: () {
+                        Navigator.pop(dialogCtx);
+                        context.push('/chat/$matchId');
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  void _onSwipeEnd(int previousIndex, int targetIndex, SwiperActivity activity) {
-    if (activity is Swipe) {
-      if (activity.direction == AxisDirection.right) {
-        print('Liked ${profiles[previousIndex]['name']}');
-        _checkMatchSimulation();
-      } else if (activity.direction == AxisDirection.left) {
-        print('Noped ${profiles[previousIndex]['name']}');
-      }
-    }
-  }
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
 
-  void _checkMatchSimulation() {
-    // Tỷ lệ Match 30% cho demo
-    if (DateTime.now().second % 3 == 0) {
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('🎉 It\'s a Match!', textAlign: TextAlign.center),
-          content: const Text('Bạn và người ấy cùng thích nhau. Bắt đầu trò chuyện ngay!', textAlign: TextAlign.center),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Để sau'),
+    if (_isLoading) {
+      return const Center(
+          child: CircularProgressIndicator(color: AppColors.primary));
+    }
+
+    if (_profiles.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.people_outline, size: 80, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text(
+              'Chưa có hồ sơ ${widget.gender} nào.',
+              style: TextStyle(fontSize: 16, color: Colors.grey[600]),
             ),
-            ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                context.go('/matches');
-              },
-              child: const Text('Nhắn tin'),
-            )
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: _loadProfiles,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Tải lại'),
+            ),
           ],
         ),
       );
     }
+
+    return SafeArea(
+      child: Column(
+        children: [
+          Expanded(
+            child: AppinioSwiper(
+              controller: _controller,
+              cardCount: _profiles.length,
+              onSwipeEnd: _onSwipeEnd,
+              cardBuilder: (context, index) => _buildCard(_profiles[index]),
+            ),
+          ),
+          _buildBottomButtons(),
+        ],
+      ),
+    );
   }
 
   Widget _buildCard(Map<String, dynamic> profile) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.2),
-            spreadRadius: 3,
-            blurRadius: 7,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      alignment: Alignment.center,
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: Image.network(
-                profile['imageUrl'],
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => const Center(child: Icon(Icons.error)),
-              ),
+    final imageUrl = (profile['avatar_urls'] != null &&
+            (profile['avatar_urls'] as List).isNotEmpty)
+        ? profile['avatar_urls'][0]
+        : null;
+
+    return GestureDetector(
+      // Tap vào phần info ở dưới → mở profile
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ViewProfileScreen(
+              profile: profile,
+              onLike: () => _controller.swipeRight(),
+              onNope: () => _controller.swipeLeft(),
             ),
-            Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Colors.black.withOpacity(0.8), Colors.transparent],
-                    begin: Alignment.bottomCenter,
-                    end: Alignment.topCenter,
+          ),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withValues(alpha: 0.25),
+              spreadRadius: 3,
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              // Ảnh đại diện
+              imageUrl != null
+                  ? Image.network(
+                      imageUrl,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Container(
+                        color: Colors.grey[300],
+                        child: const Icon(Icons.person,
+                            size: 100, color: Colors.white),
+                      ),
+                    )
+                  : Container(
+                      decoration:
+                          const BoxDecoration(gradient: AppColors.primaryGradient),
+                      child: Center(
+                        child: Text(
+                          (profile['full_name'] ?? '?')[0].toUpperCase(),
+                          style: const TextStyle(
+                              fontSize: 80,
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+              // Gradient overlay
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.black.withValues(alpha: 0.85),
+                        Colors.transparent
+                      ],
+                      begin: Alignment.bottomCenter,
+                      end: Alignment.topCenter,
+                      stops: const [0.0, 0.7],
+                    ),
+                  ),
+                  padding: const EdgeInsets.all(24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              '${profile['full_name'] ?? 'Ẩn danh'}, ${profile['age'] ?? '?'}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 26,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          // Info icon (gợi ý có thể xem profile)
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.2),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.info_outline,
+                                color: Colors.white, size: 16),
+                          ),
+                        ],
+                      ),
+                      if (profile['bio'] != null &&
+                          (profile['bio'] as String).isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          profile['bio'],
+                          style: const TextStyle(
+                              color: Colors.white70, fontSize: 15),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                      if (profile['tags'] != null &&
+                          (profile['tags'] as List).isNotEmpty) ...[
+                        const SizedBox(height: 10),
+                        Wrap(
+                          spacing: 6,
+                          children: (profile['tags'] as List)
+                              .take(3)
+                              .map((tag) => Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 10, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color:
+                                          Colors.white.withValues(alpha: 0.2),
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(
+                                          color: Colors.white30, width: 1),
+                                    ),
+                                    child: Text(
+                                      tag.toString(),
+                                      style: const TextStyle(
+                                          color: Colors.white, fontSize: 12),
+                                    ),
+                                  ))
+                              .toList(),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${profile['name']}, ${profile['age']}',
-                      style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      profile['bio'],
-                      style: const TextStyle(color: Colors.white, fontSize: 16),
-                    ),
-                  ],
-                ),
               ),
-            )
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -176,37 +433,69 @@ class _DiscoveryScreenState extends State<DiscoveryScreen> {
 
   Widget _buildBottomButtons() {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 20),
+      padding: const EdgeInsets.symmetric(vertical: 16),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _buildCircleButton(Icons.close, Colors.red, () => controller.swipeLeft()),
-          _buildCircleButton(Icons.favorite, Colors.green, () => controller.swipeRight()),
+          _buildActionButton(
+            icon: Icons.close_rounded,
+            color: Colors.redAccent,
+            onPressed: () => _controller.swipeLeft(),
+            label: 'Bỏ qua',
+          ),
+          _buildActionButton(
+            icon: Icons.favorite_rounded,
+            color: Colors.greenAccent[700]!,
+            onPressed: () => _controller.swipeRight(),
+            label: 'Thích',
+            large: true,
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildCircleButton(IconData icon, Color color, VoidCallback onPressed) {
-    return Container(
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: color.withOpacity(0.3),
-            spreadRadius: 2,
-            blurRadius: 8,
+  Widget _buildActionButton({
+    required IconData icon,
+    required Color color,
+    required VoidCallback onPressed,
+    required String label,
+    bool large = false,
+  }) {
+    final size = large ? 36.0 : 28.0;
+    final radius = large ? 36.0 : 30.0;
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: Colors.white,
+            boxShadow: [
+              BoxShadow(
+                color: color.withValues(alpha: 0.35),
+                spreadRadius: 2,
+                blurRadius: 10,
+              ),
+            ],
           ),
-        ],
-      ),
-      child: CircleAvatar(
-        radius: 35,
-        backgroundColor: Colors.white,
-        child: IconButton(
-          icon: Icon(icon, color: color, size: 35),
-          onPressed: onPressed,
+          child: CircleAvatar(
+            radius: radius,
+            backgroundColor: Colors.white,
+            child: IconButton(
+              icon: Icon(icon, color: color, size: size),
+              onPressed: onPressed,
+            ),
+          ),
         ),
-      ),
+        const SizedBox(height: 6),
+        Text(label,
+            style: TextStyle(
+                fontSize: 11,
+                color: Colors.grey[600],
+                fontWeight: FontWeight.w500)),
+      ],
     );
   }
 }
