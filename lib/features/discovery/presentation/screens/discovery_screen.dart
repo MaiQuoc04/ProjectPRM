@@ -215,7 +215,15 @@ class _GenderSwipeTabState extends State<_GenderSwipeTab>
                       label: const Text('Nhắn tin'),
                       onPressed: () {
                         Navigator.pop(dialogCtx);
-                        context.push('/chat/$matchId');
+                        context.push(
+                          '/chat/$matchId',
+                          extra: {
+                            'otherUserName': name,
+                            'otherAvatarUrl': avatarUrl,
+                            'otherBio': profile['bio'],
+                            'otherTags': profile['tags'],
+                          },
+                        );
                       },
                     ),
                   ),

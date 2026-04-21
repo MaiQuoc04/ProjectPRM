@@ -52,15 +52,15 @@ class DiscoveryService {
     if (!isLike) return null;
 
     // 2. Nếu Like, kiểm tra xem đối phương có Like mình không
-    final theirSwipe = await _supabase
+    final theirSwipeList = await _supabase
         .from('swipes')
         .select()
         .eq('swiper_id', swipedId)
         .eq('swiped_id', myId)
         .eq('action', 'like')
-        .maybeSingle();
+        .limit(1);
 
-    if (theirSwipe != null) {
+    if (theirSwipeList.isNotEmpty) {
       // It's a match! Tạo hoặc tìm match hiện có
       String? matchId;
       try {
@@ -81,9 +81,9 @@ class DiscoveryService {
             .select('id')
             .eq('user1_id', myId)
             .eq('user2_id', swipedId)
-            .maybeSingle();
-        if (r1 != null) {
-          matchId = r1['id'] as String;
+            .limit(1);
+        if (r1.isNotEmpty) {
+          matchId = r1[0]['id'] as String;
         } else {
           // Chiều 2: swipedId là user1
           final r2 = await _supabase
@@ -91,8 +91,10 @@ class DiscoveryService {
               .select('id')
               .eq('user1_id', swipedId)
               .eq('user2_id', myId)
-              .maybeSingle();
-          matchId = r2?['id'] as String?;
+              .limit(1);
+          if (r2.isNotEmpty) {
+            matchId = r2[0]['id'] as String;
+          }
         }
       }
       return matchId;

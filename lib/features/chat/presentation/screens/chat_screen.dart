@@ -3,6 +3,7 @@ import '../../../../core/theme/app_colors.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../services/chat_service.dart';
 import '../../../../services/ai_service.dart';
+import '../../../profile/presentation/screens/view_profile_screen.dart';
 
 class ChatScreen extends StatefulWidget {
   final String matchId;
@@ -34,7 +35,8 @@ class _ChatScreenState extends State<ChatScreen> {
   // Optimistic messages: tin nhắn gửi nhưng chưa có phản hồi từ server
   final List<Map<String, dynamic>> _optimisticMessages = [];
 
-  @override
+  // Cập nhật để lưu lịch sử chat cho AI
+  List<Map<String, dynamic>> _latestMessages = [];
   void dispose() {
     _messageController.dispose();
     _scrollController.dispose();
@@ -90,16 +92,43 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  Future<void> _showSmartOpener() async {
-    setState(() => _isAiLoading = true);
+  void _showSmartOpener() {
+    String selectedStyle = 'Tự nhiên';
+    final List<String> styles = ['Tự nhiên', 'Hài hước', 'Thả thính', 'Lịch sự', 'Quan tâm'];
+    List<String> suggestions = [];
+    bool isFetching = false;
 
-    final bio = widget.otherBio ?? '';
-    final tags = widget.otherTags ?? [];
+    Future<void> fetchSuggestions(StateSetter setModalState) async {
+      setModalState(() {
+        isFetching = true;
+        suggestions.clear();
+      });
 
-    final openers = await _aiService.generateSmartOpeners(bio, tags);
-    setState(() => _isAiLoading = false);
+      final bio = widget.otherBio ?? '';
+      final tags = widget.otherTags ?? [];
+      
+      String history = '';
+      final lastMsgs = _latestMessages.length > 10
+          ? _latestMessages.sublist(_latestMessages.length - 10)
+          : _latestMessages;
+      for (var m in lastMsgs) {
+        final isMe = m['sender_id'] == _chatService.currentUserId;
+        history += '${isMe ? "Tôi" : "Đối phương"}: ${m['content']}\n';
+      }
 
-    if (!mounted) return;
+      final results = await _aiService.generateSuggestions(
+        otherBio: bio,
+        otherTags: tags,
+        chatHistory: history,
+        style: selectedStyle,
+      );
+
+      if (!mounted) return;
+      setModalState(() {
+        suggestions = results;
+        isFetching = false;
+      });
+    }
 
     showModalBottomSheet(
       context: context,
@@ -107,38 +136,84 @@ class _ChatScreenState extends State<ChatScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (ctx) => Container(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                ShaderMask(
-                  shaderCallback: (b) =>
-                      AppColors.primaryGradient.createShader(b),
-                  child: const Icon(Icons.auto_awesome,
-                      color: Colors.white, size: 22),
-                ),
-                const SizedBox(width: 8),
-                const Text('AI Gợi ý câu hỏi',
-                    style:
-                        TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              ],
-            ),
-            if (tags.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Text(
-                'Dựa trên sở thích: ${tags.join(", ")}',
-                style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+      builder: (ctx) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setModalState) {
+            // Gọi AI lần đầu khi mở sheet
+            if (suggestions.isEmpty && !isFetching) {
+              // Dùng Future.microtask để tránh lỗi gọi setState trong lúc build
+              Future.microtask(() => fetchSuggestions(setModalState));
+            }
+
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom,
               ),
-            ],
-            const SizedBox(height: 16),
-            ...openers.map((o) => _buildOpenerOption(o, ctx)),
-          ],
-        ),
-      ),
+              child: Container(
+                padding: const EdgeInsets.all(24),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        ShaderMask(
+                          shaderCallback: (b) => AppColors.primaryGradient.createShader(b),
+                          child: const Icon(Icons.auto_awesome, color: Colors.white, size: 22),
+                        ),
+                        const SizedBox(width: 8),
+                        const Text('AI Gợi ý tin nhắn',
+                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    const Text('Phong cách:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                    const SizedBox(height: 8),
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: styles.map((s) {
+                          final isSelected = s == selectedStyle;
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: ChoiceChip(
+                              label: Text(s),
+                              selected: isSelected,
+                              selectedColor: AppColors.primary.withValues(alpha: 0.15),
+                              labelStyle: TextStyle(
+                                color: isSelected ? AppColors.primary : Colors.black87,
+                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                              ),
+                              onSelected: (selected) {
+                                if (selected && s != selectedStyle) {
+                                  selectedStyle = s;
+                                  fetchSuggestions(setModalState);
+                                }
+                              },
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    if (isFetching)
+                      const Center(
+                        child: Padding(
+                          padding: EdgeInsets.all(24.0),
+                          child: CircularProgressIndicator(color: AppColors.primary),
+                        ),
+                      )
+                    else if (suggestions.isNotEmpty)
+                      ...suggestions.map((o) => _buildOpenerOption(o, ctx))
+                    else
+                      const Center(child: Text('Không có gợi ý nào.')),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 
@@ -232,35 +307,53 @@ class _ChatScreenState extends State<ChatScreen> {
     return Scaffold(
       appBar: AppBar(
         titleSpacing: 0,
-        title: Row(
-          children: [
-            CircleAvatar(
-              radius: 20,
-              backgroundColor: Colors.grey[200],
-              backgroundImage: avatarUrl != null
-                  ? NetworkImage(avatarUrl)
-                  : null,
-              child: avatarUrl == null
-                  ? Text(
-                      name.isNotEmpty ? name[0].toUpperCase() : '?',
+        title: GestureDetector(
+          onTap: () {
+            final profileData = {
+              'full_name': name,
+              if (avatarUrl != null) 'avatar_urls': [avatarUrl],
+              'bio': widget.otherBio,
+              'tags': widget.otherTags,
+            };
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => ViewProfileScreen(
+                  profile: profileData,
+                ),
+              ),
+            );
+          },
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 20,
+                backgroundColor: Colors.grey[200],
+                backgroundImage: avatarUrl != null
+                    ? NetworkImage(avatarUrl)
+                    : null,
+                child: avatarUrl == null
+                    ? Text(
+                        name.isNotEmpty ? name[0].toUpperCase() : '?',
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primary),
+                      )
+                    : null,
+              ),
+              const SizedBox(width: 10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(name,
                       style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primary),
-                    )
-                  : null,
-            ),
-            const SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(name,
-                    style: const TextStyle(
-                        fontSize: 16, fontWeight: FontWeight.bold)),
-                const Text('Đang hoạt động',
-                    style: TextStyle(fontSize: 12, color: Colors.green)),
-              ],
-            ),
-          ],
+                          fontSize: 16, fontWeight: FontWeight.bold)),
+                  const Text('Đang hoạt động',
+                      style: TextStyle(fontSize: 12, color: Colors.green)),
+                ],
+              ),
+            ],
+          ),
         ),
         actions: [
           IconButton(
@@ -283,6 +376,12 @@ class _ChatScreenState extends State<ChatScreen> {
                     .where((m) => !serverIds.contains(m['id']))
                     .toList();
                 final allMessages = [...serverMessages, ...pendingOptimistic];
+
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted) {
+                    _latestMessages = allMessages;
+                  }
+                });
 
                 if (snapshot.connectionState == ConnectionState.waiting &&
                     allMessages.isEmpty) {
