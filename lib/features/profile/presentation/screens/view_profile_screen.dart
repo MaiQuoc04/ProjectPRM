@@ -57,16 +57,18 @@ class ViewProfileScreen extends StatelessWidget {
                     _buildPlaceholder(name),
 
                   // Gradient overlay
-                  Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          Colors.black.withValues(alpha: 0.65),
-                          Colors.transparent
-                        ],
-                        begin: Alignment.bottomCenter,
-                        end: Alignment.topCenter,
-                        stops: const [0.0, 0.55],
+                  IgnorePointer(
+                    child: Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.black.withValues(alpha: 0.65),
+                            Colors.transparent
+                          ],
+                          begin: Alignment.bottomCenter,
+                          end: Alignment.topCenter,
+                          stops: const [0.0, 0.55],
+                        ),
                       ),
                     ),
                   ),
@@ -251,6 +253,33 @@ class _PhotoGallery extends StatefulWidget {
 
 class _PhotoGalleryState extends State<_PhotoGallery> {
   int _currentPage = 0;
+  late PageController _pageController;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _nextPage() {
+    if (_currentPage < widget.photoUrls.length - 1) {
+      _pageController.nextPage(
+          duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
+    }
+  }
+
+  void _prevPage() {
+    if (_currentPage > 0) {
+      _pageController.previousPage(
+          duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -258,6 +287,7 @@ class _PhotoGalleryState extends State<_PhotoGallery> {
       fit: StackFit.expand,
       children: [
         PageView.builder(
+          controller: _pageController,
           itemCount: widget.photoUrls.length,
           onPageChanged: (i) => setState(() => _currentPage = i),
           itemBuilder: (context, index) => Image.network(
@@ -269,6 +299,28 @@ class _PhotoGalleryState extends State<_PhotoGallery> {
             ),
           ),
         ),
+        // Tap detector (trái/phải) để đổi ảnh
+        if (widget.photoUrls.length > 1)
+          Positioned.fill(
+            child: Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: _prevPage,
+                    behavior: HitTestBehavior.translucent,
+                    child: Container(),
+                  ),
+                ),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: _nextPage,
+                    behavior: HitTestBehavior.translucent,
+                    child: Container(),
+                  ),
+                ),
+              ],
+            ),
+          ),
         // Dots indicator
         if (widget.photoUrls.length > 1)
           Positioned(

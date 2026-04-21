@@ -79,6 +79,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final String? avatarUrl = (avatarUrls != null && (avatarUrls as List).isNotEmpty)
         ? avatarUrls[0] as String
         : null;
+    final List<String> photoUrls = avatarUrls != null
+        ? List<String>.from(avatarUrls)
+        : [];
     final String name = profile?['full_name'] ?? 'Ẩn danh';
     final int? age = profile?['age'];
     final String? gender = profile?['gender'];
@@ -112,22 +115,19 @@ class _ProfileScreenState extends State<ProfileScreen> {
               fit: StackFit.expand,
               children: [
                 // Ảnh đại diện
-                avatarUrl != null
-                    ? Image.network(
-                        avatarUrl,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stack) =>
-                            _buildAvatarPlaceholder(name),
-                      )
+                photoUrls.isNotEmpty
+                    ? _PhotoGallery(photoUrls: photoUrls)
                     : _buildAvatarPlaceholder(name),
                 // Gradient overlay
-                Container(
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [Colors.black54, Colors.transparent],
-                      begin: Alignment.bottomCenter,
-                      end: Alignment.topCenter,
-                      stops: [0.0, 0.5],
+                IgnorePointer(
+                  child: Container(
+                    decoration: const BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [Colors.black54, Colors.transparent],
+                        begin: Alignment.bottomCenter,
+                        end: Alignment.topCenter,
+                        stops: [0.0, 0.5],
+                      ),
                     ),
                   ),
                 ),
@@ -273,6 +273,115 @@ class _ProfileScreenState extends State<ProfileScreen> {
         fontWeight: FontWeight.bold,
         color: AppColors.textPrimary,
       ),
+    );
+  }
+}
+
+/// Gallery ảnh có thể vuốt ngang
+class _PhotoGallery extends StatefulWidget {
+  final List<String> photoUrls;
+  const _PhotoGallery({required this.photoUrls});
+
+  @override
+  State<_PhotoGallery> createState() => _PhotoGalleryState();
+}
+
+class _PhotoGalleryState extends State<_PhotoGallery> {
+  int _currentPage = 0;
+  late PageController _pageController;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController();
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  void _nextPage() {
+    if (_currentPage < widget.photoUrls.length - 1) {
+      _pageController.nextPage(
+          duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
+    }
+  }
+
+  void _prevPage() {
+    if (_currentPage > 0) {
+      _pageController.previousPage(
+          duration: const Duration(milliseconds: 300), curve: Curves.easeInOut);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        PageView.builder(
+          controller: _pageController,
+          itemCount: widget.photoUrls.length,
+          onPageChanged: (i) => setState(() => _currentPage = i),
+          itemBuilder: (context, index) => Image.network(
+            widget.photoUrls[index],
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stack) => Container(
+              color: Colors.grey[300],
+              child: const Icon(Icons.person, size: 80, color: Colors.white),
+            ),
+          ),
+        ),
+        // Tap detector (trái/phải) để đổi ảnh
+        if (widget.photoUrls.length > 1)
+          Positioned.fill(
+            child: Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: _prevPage,
+                    behavior: HitTestBehavior.translucent,
+                    child: Container(),
+                  ),
+                ),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: _nextPage,
+                    behavior: HitTestBehavior.translucent,
+                    child: Container(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        // Dots indicator
+        if (widget.photoUrls.length > 1)
+          Positioned(
+            top: 60,
+            left: 0,
+            right: 0,
+            child: Row(
+               mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(
+                widget.photoUrls.length,
+                (i) => AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                  width: _currentPage == i ? 20 : 6,
+                  height: 6,
+                  decoration: BoxDecoration(
+                    color: _currentPage == i
+                        ? Colors.white
+                        : Colors.white54,
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

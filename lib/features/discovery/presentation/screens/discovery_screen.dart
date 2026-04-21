@@ -3,6 +3,7 @@ import 'package:appinio_swiper/appinio_swiper.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../services/discovery_service.dart';
+import '../../../../services/chat_service.dart';
 import '../../../profile/presentation/screens/view_profile_screen.dart';
 
 class DiscoveryScreen extends StatefulWidget {
@@ -15,6 +16,7 @@ class DiscoveryScreen extends StatefulWidget {
 class _DiscoveryScreenState extends State<DiscoveryScreen>
     with SingleTickerProviderStateMixin {
   final DiscoveryService _discoveryService = DiscoveryService();
+  final ChatService _chatService = ChatService();
 
   late TabController _tabController;
 
@@ -54,9 +56,45 @@ class _DiscoveryScreenState extends State<DiscoveryScreen>
           onPressed: () => context.push('/profile'),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.chat_bubble_outline, color: Colors.grey),
-            onPressed: () => context.go('/matches'),
+          StreamBuilder<int>(
+            stream: _chatService.streamUnreadConversationsCount(),
+            builder: (context, snapshot) {
+              final unreadCount = snapshot.data ?? 0;
+              return Stack(
+                alignment: Alignment.center,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.chat_bubble_outline, color: Colors.grey),
+                    onPressed: () => context.go('/matches'),
+                  ),
+                  if (unreadCount > 0)
+                    Positioned(
+                      right: 6,
+                      top: 8,
+                      child: Container(
+                        padding: const EdgeInsets.all(4),
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 18,
+                          minHeight: 18,
+                        ),
+                        child: Text(
+                          unreadCount > 9 ? '9+' : unreadCount.toString(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
           ),
         ],
         bottom: TabBar(
@@ -285,14 +323,9 @@ class _GenderSwipeTabState extends State<_GenderSwipeTab>
   }
 
   Widget _buildCard(Map<String, dynamic> profile) {
-    final imageUrl = (profile['avatar_urls'] != null &&
-            (profile['avatar_urls'] as List).isNotEmpty)
-        ? profile['avatar_urls'][0]
-        : null;
-
-    return GestureDetector(
-      // Tap vào phần info ở dưới → mở profile
-      onTap: () {
+    return _ProfileSwipeCard(
+      profile: profile,
+      onOpenProfile: () {
         Navigator.push(
           context,
           MaterialPageRoute(
@@ -304,138 +337,6 @@ class _GenderSwipeTabState extends State<_GenderSwipeTab>
           ),
         );
       },
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withValues(alpha: 0.25),
-              spreadRadius: 3,
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(24),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              // Ảnh đại diện
-              imageUrl != null
-                  ? Image.network(
-                      imageUrl,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => Container(
-                        color: Colors.grey[300],
-                        child: const Icon(Icons.person,
-                            size: 100, color: Colors.white),
-                      ),
-                    )
-                  : Container(
-                      decoration:
-                          const BoxDecoration(gradient: AppColors.primaryGradient),
-                      child: Center(
-                        child: Text(
-                          (profile['full_name'] ?? '?')[0].toUpperCase(),
-                          style: const TextStyle(
-                              fontSize: 80,
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ),
-              // Gradient overlay
-              Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        Colors.black.withValues(alpha: 0.85),
-                        Colors.transparent
-                      ],
-                      begin: Alignment.bottomCenter,
-                      end: Alignment.topCenter,
-                      stops: const [0.0, 0.7],
-                    ),
-                  ),
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              '${profile['full_name'] ?? 'Ẩn danh'}, ${profile['age'] ?? '?'}',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 26,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                          // Info icon (gợi ý có thể xem profile)
-                          Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.2),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(Icons.info_outline,
-                                color: Colors.white, size: 16),
-                          ),
-                        ],
-                      ),
-                      if (profile['bio'] != null &&
-                          (profile['bio'] as String).isNotEmpty) ...[
-                        const SizedBox(height: 8),
-                        Text(
-                          profile['bio'],
-                          style: const TextStyle(
-                              color: Colors.white70, fontSize: 15),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                      if (profile['tags'] != null &&
-                          (profile['tags'] as List).isNotEmpty) ...[
-                        const SizedBox(height: 10),
-                        Wrap(
-                          spacing: 6,
-                          children: (profile['tags'] as List)
-                              .take(3)
-                              .map((tag) => Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 10, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color:
-                                          Colors.white.withValues(alpha: 0.2),
-                                      borderRadius: BorderRadius.circular(20),
-                                      border: Border.all(
-                                          color: Colors.white30, width: 1),
-                                    ),
-                                    child: Text(
-                                      tag.toString(),
-                                      style: const TextStyle(
-                                          color: Colors.white, fontSize: 12),
-                                    ),
-                                  ))
-                              .toList(),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 
@@ -504,6 +405,233 @@ class _GenderSwipeTabState extends State<_GenderSwipeTab>
                 color: Colors.grey[600],
                 fontWeight: FontWeight.w500)),
       ],
+    );
+  }
+}
+
+class _ProfileSwipeCard extends StatefulWidget {
+  final Map<String, dynamic> profile;
+  final VoidCallback onOpenProfile;
+
+  const _ProfileSwipeCard({required this.profile, required this.onOpenProfile});
+
+  @override
+  State<_ProfileSwipeCard> createState() => _ProfileSwipeCardState();
+}
+
+class _ProfileSwipeCardState extends State<_ProfileSwipeCard> {
+  int _currentImageIndex = 0;
+
+  void _nextImage(int maxImages) {
+    if (_currentImageIndex < maxImages - 1) {
+      setState(() => _currentImageIndex++);
+    }
+  }
+
+  void _prevImage() {
+    if (_currentImageIndex > 0) {
+      setState(() => _currentImageIndex--);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final profile = widget.profile;
+    final List<String> photoUrls = profile['avatar_urls'] != null
+        ? List<String>.from(profile['avatar_urls'])
+        : [];
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withValues(alpha: 0.25),
+            spreadRadius: 3,
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Ảnh đại diện
+            photoUrls.isNotEmpty
+                ? Image.network(
+                    photoUrls[_currentImageIndex],
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      color: Colors.grey[300],
+                      child: const Icon(Icons.person,
+                          size: 100, color: Colors.white),
+                    ),
+                  )
+                : Container(
+                    decoration:
+                        const BoxDecoration(gradient: AppColors.primaryGradient),
+                    child: Center(
+                      child: Text(
+                        (profile['full_name'] ?? '?')[0].toUpperCase(),
+                        style: const TextStyle(
+                            fontSize: 80,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+
+            // Tap detector nửa trái / nửa phải để đổi ảnh (chỉ lấy 70% chiều cao trên cùng)
+            if (photoUrls.length > 1)
+              Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 150, // Tránh đè lên phần thông tin ở dưới
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: _prevImage,
+                        behavior: HitTestBehavior.translucent,
+                        child: Container(),
+                      ),
+                    ),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => _nextImage(photoUrls.length),
+                        behavior: HitTestBehavior.translucent,
+                        child: Container(),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+            // Indicator dots ở trên cùng
+            if (photoUrls.length > 1)
+              Positioned(
+                top: 12,
+                left: 0,
+                right: 0,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: List.generate(
+                    photoUrls.length,
+                    (i) => AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      margin: const EdgeInsets.symmetric(horizontal: 3),
+                      width: _currentImageIndex == i ? 24 : 8,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: _currentImageIndex == i
+                            ? Colors.white
+                            : Colors.white.withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(2),
+                        boxShadow: const [
+                          BoxShadow(color: Colors.black26, blurRadius: 2)
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+
+            // Gradient overlay & Info (nhấn vào đây mở profile)
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: GestureDetector(
+                onTap: widget.onOpenProfile,
+                behavior: HitTestBehavior.opaque,
+                child: Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        Colors.black.withValues(alpha: 0.85),
+                        Colors.transparent
+                      ],
+                      begin: Alignment.bottomCenter,
+                      end: Alignment.topCenter,
+                      stops: const [0.0, 1.0],
+                    ),
+                  ),
+                  padding: const EdgeInsets.fromLTRB(24, 60, 24, 24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              '${profile['full_name'] ?? 'Ẩn danh'}, ${profile['age'] ?? '?'}',
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 26,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          // Info icon
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.2),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.info_outline,
+                                color: Colors.white, size: 16),
+                          ),
+                        ],
+                      ),
+                      if (profile['bio'] != null &&
+                          (profile['bio'] as String).isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          profile['bio'],
+                          style: const TextStyle(
+                              color: Colors.white70, fontSize: 15),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                      if (profile['tags'] != null &&
+                          (profile['tags'] as List).isNotEmpty) ...[
+                        const SizedBox(height: 10),
+                        Wrap(
+                          spacing: 6,
+                          children: (profile['tags'] as List)
+                              .take(3)
+                              .map((tag) => Container(
+                                    padding: const EdgeInsets.symmetric(
+                                        horizontal: 10, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(alpha: 0.2),
+                                      borderRadius: BorderRadius.circular(20),
+                                      border: Border.all(
+                                          color: Colors.white30, width: 1),
+                                    ),
+                                    child: Text(
+                                      tag.toString(),
+                                      style: const TextStyle(
+                                          color: Colors.white, fontSize: 12),
+                                    ),
+                                  ))
+                              .toList(),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

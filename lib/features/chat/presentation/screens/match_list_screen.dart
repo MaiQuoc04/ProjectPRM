@@ -36,7 +36,7 @@ class _MatchListScreenState extends State<MatchListScreen> {
     }
   }
 
-  void _openChat(Map<String, dynamic> match) {
+  Future<void> _openChat(Map<String, dynamic> match) async {
     final profile = match['other_profile'] as Map<String, dynamic>?;
     final matchId = match['id'] as String;
     final name = profile?['full_name'] as String?;
@@ -49,7 +49,7 @@ class _MatchListScreenState extends State<MatchListScreen> {
         ? List<String>.from(profile!['tags'])
         : <String>[];
 
-    context.push(
+    await context.push(
       '/chat/$matchId',
       extra: {
         'otherUserName': name,
@@ -119,6 +119,21 @@ class _MatchListScreenState extends State<MatchListScreen> {
                         ? avatarUrls[0] as String
                         : null;
 
+                    int unreadCount = match['unread_count'] as int? ?? 0;
+                    final lastMessage = match['last_message'] as Map<String, dynamic>?;
+
+                    String subtitleText = 'Bấm để trò chuyện';
+                    bool isUnread = unreadCount > 0;
+                    
+                    if (unreadCount >= 2) {
+                      subtitleText = '$unreadCount tin nhắn mới';
+                    } else if (lastMessage != null) {
+                      final content = lastMessage['content'] as String? ?? '';
+                      final isMe = lastMessage['sender_id'] == _chatService.currentUserId;
+                      final prefix = isMe ? 'Bạn: ' : '';
+                      subtitleText = '$prefix$content';
+                    }
+
                     return ListTile(
                       contentPadding: const EdgeInsets.symmetric(
                           horizontal: 16, vertical: 6),
@@ -140,20 +155,31 @@ class _MatchListScreenState extends State<MatchListScreen> {
                             : null,
                       ),
                       title: Text(name,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 16)),
-                      subtitle: const Text('Bấm để trò chuyện',
-                          style: TextStyle(color: Colors.grey, fontSize: 13)),
-                      trailing: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: const BoxDecoration(
-                          color: AppColors.primary,
-                          shape: BoxShape.circle,
-                        ),
-                        child: const Icon(Icons.chat_bubble_outline,
-                            color: Colors.white, size: 18),
-                      ),
-                      onTap: () => _openChat(match),
+                          style: TextStyle(
+                              fontWeight: isUnread ? FontWeight.bold : FontWeight.w600,
+                              fontSize: 16)),
+                      subtitle: Text(subtitleText,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                              color: isUnread ? Colors.black87 : Colors.grey,
+                              fontWeight: isUnread ? FontWeight.bold : FontWeight.normal,
+                              fontSize: 13)),
+                      trailing: isUnread
+                          ? Container(
+                              width: 12,
+                              height: 12,
+                              margin: const EdgeInsets.only(right: 8),
+                              decoration: const BoxDecoration(
+                                color: Colors.blue,
+                                shape: BoxShape.circle,
+                              ),
+                            )
+                          : null,
+                      onTap: () async {
+                        await _openChat(match);
+                        _loadMatches(); // Refresh list when returning from chat
+                      },
                     );
                   },
                 ),

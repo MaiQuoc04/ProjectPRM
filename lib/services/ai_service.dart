@@ -2,7 +2,7 @@ import 'package:google_generative_ai/google_generative_ai.dart';
 
 class AiService {
   // TODO: Bạn cần thay thế API_KEY thật của Google Gemini
-  static const String apiKey = 'AIzaSyDmqQSmgIutmKM2f7IuIgMG15QARGlfEdE';
+  static const String apiKey = 'AIzaSyApmgFjGtRaCgdTMem6gDN0OasZ-dnLKQA';
 
   final GenerativeModel _model;
 

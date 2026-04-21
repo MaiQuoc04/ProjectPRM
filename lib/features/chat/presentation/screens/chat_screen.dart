@@ -238,7 +238,7 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Widget _buildMessageBubble(Map<String, dynamic> msg, String? currentUserId) {
+  Widget _buildMessageBubble(Map<String, dynamic> msg, String? currentUserId, bool isLastMyMessage) {
     final isMe = msg['sender_id'] == currentUserId;
     final isOptimistic = msg['_isOptimistic'] == true;
     final isError = msg['_error'] == true;
@@ -289,6 +289,24 @@ class _ChatScreenState extends State<ChatScreen> {
                     Text('Đang gửi...',
                         style:
                             TextStyle(fontSize: 10, color: Colors.grey[400])),
+                  ],
+                ),
+              )
+            else if (isMe && !isError && isLastMyMessage)
+              Padding(
+                padding: const EdgeInsets.only(top: 2, right: 4),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      msg['is_read'] == true ? Icons.done_all : Icons.done, 
+                      size: 12, 
+                      color: msg['is_read'] == true ? Colors.blue : Colors.grey[400]
+                    ),
+                    const SizedBox(width: 2),
+                    Text(msg['is_read'] == true ? 'Đã xem' : 'Đã gửi',
+                        style:
+                            TextStyle(fontSize: 10, color: msg['is_read'] == true ? Colors.blue : Colors.grey[400])),
                   ],
                 ),
               ),
@@ -380,6 +398,14 @@ class _ChatScreenState extends State<ChatScreen> {
                 WidgetsBinding.instance.addPostFrameCallback((_) {
                   if (mounted) {
                     _latestMessages = allMessages;
+                    
+                    // Đánh dấu đã đọc nếu có tin nhắn mới từ đối phương
+                    final hasUnread = allMessages.any((m) => 
+                        m['sender_id'] != _chatService.currentUserId && 
+                        m['is_read'] != true);
+                    if (hasUnread) {
+                      _chatService.markMessagesAsRead(widget.matchId);
+                    }
                   }
                 });
 
@@ -413,13 +439,22 @@ class _ChatScreenState extends State<ChatScreen> {
 
                 _scrollToBottom();
 
+                final isMyAbsoluteLastMessage = allMessages.isNotEmpty && 
+                                                allMessages.last['sender_id'] == currentUserId;
+
                 return ListView.builder(
                   controller: _scrollController,
                   padding:
                       const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                   itemCount: allMessages.length,
-                  itemBuilder: (context, index) =>
-                      _buildMessageBubble(allMessages[index], currentUserId),
+                  itemBuilder: (context, index) {
+                    final isLast = index == allMessages.length - 1;
+                    return _buildMessageBubble(
+                      allMessages[index], 
+                      currentUserId, 
+                      isLast && isMyAbsoluteLastMessage
+                    );
+                  },
                 );
               },
             ),
