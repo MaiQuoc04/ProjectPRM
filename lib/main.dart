@@ -5,20 +5,22 @@ import 'package:provider/provider.dart';
 
 import 'core/theme/app_theme.dart';
 import 'core/routes/app_router.dart';
+import 'core/widgets/app_branding.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   await Supabase.initialize(
     url: 'https://tiffncacprawnjcwdejg.supabase.co',
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZmZuY2FjcHJhd25qY3dkZWpnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2OTQ4NzIsImV4cCI6MjA5MjI3MDg3Mn0.luKd2bqpnuaEZfQYTRCOLY4JnIzOX6ilMU7bmTswYOs',
+    anonKey:
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRpZmZuY2FjcHJhd25qY3dkZWpnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY2OTQ4NzIsImV4cCI6MjA5MjI3MDg3Mn0.luKd2bqpnuaEZfQYTRCOLY4JnIzOX6ilMU7bmTswYOs',
   );
 
-  runApp(const DatingApp());
+  runApp(const ImprintApp());
 }
 
-class DatingApp extends StatelessWidget {
-  const DatingApp({super.key});
+class ImprintApp extends StatelessWidget {
+  const ImprintApp({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -28,7 +30,7 @@ class DatingApp extends StatelessWidget {
         Provider(create: (_) => 'mock_provider'),
       ],
       child: MaterialApp.router(
-        title: 'Dating App PRM',
+        title: AppBranding.appName,
         theme: AppTheme.lightTheme,
         routerConfig: AppRouter.router,
         debugShowCheckedModeBanner: false,

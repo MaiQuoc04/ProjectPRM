@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:appinio_swiper/appinio_swiper.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/app_branding.dart';
 import '../../../../services/discovery_service.dart';
 import '../../../../services/chat_service.dart';
 import '../../../profile/presentation/screens/view_profile_screen.dart';
@@ -42,13 +43,13 @@ class _DiscoveryScreenState extends State<DiscoveryScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'Dating App',
-          style: TextStyle(
-            color: AppColors.primary,
-            fontWeight: FontWeight.bold,
-            fontSize: 24,
-          ),
+        toolbarHeight: 78,
+        title: const BrandWordmark(
+          showSlogan: true,
+          center: true,
+          titleSize: 24,
+          sloganSize: 10.5,
+          maxSloganLines: 1,
         ),
         centerTitle: true,
         leading: IconButton(
@@ -64,7 +65,10 @@ class _DiscoveryScreenState extends State<DiscoveryScreen>
                 alignment: Alignment.center,
                 children: [
                   IconButton(
-                    icon: const Icon(Icons.chat_bubble_outline, color: Colors.grey),
+                    icon: const Icon(
+                      Icons.chat_bubble_outline,
+                      color: Colors.grey,
+                    ),
                     onPressed: () => context.go('/matches'),
                   ),
                   if (unreadCount > 0)
@@ -103,19 +107,22 @@ class _DiscoveryScreenState extends State<DiscoveryScreen>
           unselectedLabelColor: Colors.grey,
           indicatorColor: AppColors.primary,
           indicatorWeight: 3,
-          labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-          tabs: _tabs
-              .map((t) => Tab(text: t['label']))
-              .toList(),
+          labelStyle: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 15,
+          ),
+          tabs: _tabs.map((t) => Tab(text: t['label'])).toList(),
         ),
       ),
       body: TabBarView(
         controller: _tabController,
         children: _tabs
-            .map((t) => _GenderSwipeTab(
-                  gender: t['gender']!,
-                  discoveryService: _discoveryService,
-                ))
+            .map(
+              (t) => _GenderSwipeTab(
+                gender: t['gender']!,
+                discoveryService: _discoveryService,
+              ),
+            )
             .toList(),
       ),
     );
@@ -127,10 +134,7 @@ class _GenderSwipeTab extends StatefulWidget {
   final String gender;
   final DiscoveryService discoveryService;
 
-  const _GenderSwipeTab({
-    required this.gender,
-    required this.discoveryService,
-  });
+  const _GenderSwipeTab({required this.gender, required this.discoveryService});
 
   @override
   State<_GenderSwipeTab> createState() => _GenderSwipeTabState();
@@ -154,13 +158,15 @@ class _GenderSwipeTabState extends State<_GenderSwipeTab>
   Future<void> _loadProfiles() async {
     setState(() => _isLoading = true);
     try {
-      final data = await widget.discoveryService
-          .getDiscoveryProfiles(genderFilter: widget.gender);
+      final data = await widget.discoveryService.getDiscoveryProfiles(
+        genderFilter: widget.gender,
+      );
       setState(() => _profiles = data);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Lỗi: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -168,31 +174,37 @@ class _GenderSwipeTabState extends State<_GenderSwipeTab>
   }
 
   Future<void> _onSwipeEnd(
-      int previousIndex, int targetIndex, SwiperActivity activity) async {
+    int previousIndex,
+    int targetIndex,
+    SwiperActivity activity,
+  ) async {
     if (activity is Swipe) {
       final isLike = activity.direction == AxisDirection.right;
       final swipedProfile = _profiles[previousIndex];
       final swipedId = swipedProfile['id'];
 
       try {
-        final matchId =
-            await widget.discoveryService.recordSwipe(swipedId, isLike);
+        final matchId = await widget.discoveryService.recordSwipe(
+          swipedId,
+          isLike,
+        );
 
         if (matchId != null && mounted) {
           _showMatchDialog(swipedProfile, matchId);
         }
       } catch (e) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Lỗi khi ghi nhận swipe: $e')),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Lỗi khi ghi nhận swipe: $e')));
         }
       }
     }
   }
 
   void _showMatchDialog(Map<String, dynamic> profile, String matchId) {
-    final avatarUrl = (profile['avatar_urls'] != null &&
+    final avatarUrl =
+        (profile['avatar_urls'] != null &&
             (profile['avatar_urls'] as List).isNotEmpty)
         ? profile['avatar_urls'][0] as String
         : null;
@@ -280,7 +292,8 @@ class _GenderSwipeTabState extends State<_GenderSwipeTab>
 
     if (_isLoading) {
       return const Center(
-          child: CircularProgressIndicator(color: AppColors.primary));
+        child: CircularProgressIndicator(color: AppColors.primary),
+      );
     }
 
     if (_profiles.isEmpty) {
@@ -399,11 +412,14 @@ class _GenderSwipeTabState extends State<_GenderSwipeTab>
           ),
         ),
         const SizedBox(height: 6),
-        Text(label,
-            style: TextStyle(
-                fontSize: 11,
-                color: Colors.grey[600],
-                fontWeight: FontWeight.w500)),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            color: Colors.grey[600],
+            fontWeight: FontWeight.w500,
+          ),
+        ),
       ],
     );
   }
@@ -466,20 +482,25 @@ class _ProfileSwipeCardState extends State<_ProfileSwipeCard> {
                     fit: BoxFit.cover,
                     errorBuilder: (context, error, stackTrace) => Container(
                       color: Colors.grey[300],
-                      child: const Icon(Icons.person,
-                          size: 100, color: Colors.white),
+                      child: const Icon(
+                        Icons.person,
+                        size: 100,
+                        color: Colors.white,
+                      ),
                     ),
                   )
                 : Container(
-                    decoration:
-                        const BoxDecoration(gradient: AppColors.primaryGradient),
+                    decoration: const BoxDecoration(
+                      gradient: AppColors.primaryGradient,
+                    ),
                     child: Center(
                       child: Text(
                         (profile['full_name'] ?? '?')[0].toUpperCase(),
                         style: const TextStyle(
-                            fontSize: 80,
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold),
+                          fontSize: 80,
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
@@ -532,7 +553,7 @@ class _ProfileSwipeCardState extends State<_ProfileSwipeCard> {
                             : Colors.white.withValues(alpha: 0.5),
                         borderRadius: BorderRadius.circular(2),
                         boxShadow: const [
-                          BoxShadow(color: Colors.black26, blurRadius: 2)
+                          BoxShadow(color: Colors.black26, blurRadius: 2),
                         ],
                       ),
                     ),
@@ -553,7 +574,7 @@ class _ProfileSwipeCardState extends State<_ProfileSwipeCard> {
                     gradient: LinearGradient(
                       colors: [
                         Colors.black.withValues(alpha: 0.85),
-                        Colors.transparent
+                        Colors.transparent,
                       ],
                       begin: Alignment.bottomCenter,
                       end: Alignment.topCenter,
@@ -583,8 +604,11 @@ class _ProfileSwipeCardState extends State<_ProfileSwipeCard> {
                               color: Colors.white.withValues(alpha: 0.2),
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(Icons.info_outline,
-                                color: Colors.white, size: 16),
+                            child: const Icon(
+                              Icons.info_outline,
+                              color: Colors.white,
+                              size: 16,
+                            ),
                           ),
                         ],
                       ),
@@ -594,7 +618,9 @@ class _ProfileSwipeCardState extends State<_ProfileSwipeCard> {
                         Text(
                           profile['bio'],
                           style: const TextStyle(
-                              color: Colors.white70, fontSize: 15),
+                            color: Colors.white70,
+                            fontSize: 15,
+                          ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -606,21 +632,29 @@ class _ProfileSwipeCardState extends State<_ProfileSwipeCard> {
                           spacing: 6,
                           children: (profile['tags'] as List)
                               .take(3)
-                              .map((tag) => Container(
-                                    padding: const EdgeInsets.symmetric(
-                                        horizontal: 10, vertical: 4),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white.withValues(alpha: 0.2),
-                                      borderRadius: BorderRadius.circular(20),
-                                      border: Border.all(
-                                          color: Colors.white30, width: 1),
+                              .map(
+                                (tag) => Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.2),
+                                    borderRadius: BorderRadius.circular(20),
+                                    border: Border.all(
+                                      color: Colors.white30,
+                                      width: 1,
                                     ),
-                                    child: Text(
-                                      tag.toString(),
-                                      style: const TextStyle(
-                                          color: Colors.white, fontSize: 12),
+                                  ),
+                                  child: Text(
+                                    tag.toString(),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 12,
                                     ),
-                                  ))
+                                  ),
+                                ),
+                              )
                               .toList(),
                         ),
                       ],

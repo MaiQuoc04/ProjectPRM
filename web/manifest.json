@@ -1,11 +1,11 @@
 {
-    "name": "project_prm",
-    "short_name": "project_prm",
+    "name": "IMPRINT",
+    "short_name": "IMPRINT",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "IMPRINT - Lướt qua đời nhau, để lại dấu ấn.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

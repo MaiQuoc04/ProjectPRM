@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ChatService {
@@ -5,12 +8,10 @@ class ChatService {
 
   String? get currentUserId => _supabase.auth.currentUser?.id;
 
-  // Lấy danh sách Matches
   Future<List<Map<String, dynamic>>> getMatches() async {
     final myId = currentUserId;
     if (myId == null) throw Exception('Chưa đăng nhập');
 
-    // Lấy danh sách các matches của mình
     final response = await _supabase
         .from('matches')
         .select('id, user1_id, user2_id')
@@ -18,9 +19,11 @@ class ChatService {
 
     final matches = List<Map<String, dynamic>>.from(response);
 
-    // Lấy thông tin profile của đối phương (bao gồm bio và tags cho AI)
-    for (var match in matches) {
-      final otherUserId = match['user1_id'] == myId ? match['user2_id'] : match['user1_id'];
+    for (final match in matches) {
+      final otherUserId = match['user1_id'] == myId
+          ? match['user2_id']
+          : match['user1_id'];
+
       final profile = await _supabase
           .from('profiles')
           .select('full_name, avatar_urls, bio, tags')
@@ -29,7 +32,6 @@ class ChatService {
 
       match['other_profile'] = profile;
 
-      // Lấy tin nhắn mới nhất và đếm số lượng tin nhắn chưa đọc
       final messages = await _supabase
           .from('messages')
           .select('content, sender_id, is_read, created_at')
@@ -38,7 +40,10 @@ class ChatService {
 
       if (messages.isNotEmpty) {
         match['last_message'] = messages.first;
-        match['unread_count'] = messages.where((m) => m['sender_id'] != myId && m['is_read'] != true).length;
+        match['unread_count'] = messages
+            .where((message) => message['sender_id'] != myId)
+            .where((message) => message['is_read'] != true)
+            .length;
       } else {
         match['last_message'] = null;
         match['unread_count'] = 0;
@@ -48,7 +53,61 @@ class ChatService {
     return matches;
   }
 
-  // Lắng nghe tin nhắn realtime
+  Stream<List<Map<String, dynamic>>> streamMatchList() {
+    late final StreamController<List<Map<String, dynamic>>> controller;
+    StreamSubscription<List<Map<String, dynamic>>>? messageChangesSub;
+    var isRefreshing = false;
+    var hasPendingRefresh = false;
+
+    Future<void> emitMatches() async {
+      if (isRefreshing) {
+        hasPendingRefresh = true;
+        return;
+      }
+
+      isRefreshing = true;
+      try {
+        final matches = await getMatches();
+        if (!controller.isClosed) {
+          controller.add(matches);
+        }
+      } catch (error, stackTrace) {
+        if (!controller.isClosed) {
+          controller.addError(error, stackTrace);
+        }
+      } finally {
+        isRefreshing = false;
+        if (hasPendingRefresh && !controller.isClosed) {
+          hasPendingRefresh = false;
+          Future.microtask(emitMatches);
+        }
+      }
+    }
+
+    controller = StreamController<List<Map<String, dynamic>>>(
+      onListen: () {
+        emitMatches();
+        messageChangesSub = _supabase
+            .from('messages')
+            .stream(primaryKey: ['id'])
+            .skip(1)
+            .listen(
+              (_) => emitMatches(),
+              onError: (Object error, StackTrace stackTrace) {
+                if (!controller.isClosed) {
+                  controller.addError(error, stackTrace);
+                }
+              },
+            );
+      },
+      onCancel: () async {
+        await messageChangesSub?.cancel();
+      },
+    );
+
+    return controller.stream;
+  }
+
   Stream<List<Map<String, dynamic>>> streamMessages(String matchId) {
     return _supabase
         .from('messages')
@@ -57,8 +116,11 @@ class ChatService {
         .order('created_at', ascending: true);
   }
 
-  // Gửi tin nhắn
-  Future<void> sendMessage(String matchId, String content, {String type = 'text'}) async {
+  Future<void> sendMessage(
+    String matchId,
+    String content, {
+    String type = 'text',
+  }) async {
     final myId = currentUserId;
     if (myId == null) throw Exception('Chưa đăng nhập');
 
@@ -71,7 +133,6 @@ class ChatService {
     });
   }
 
-  // Đánh dấu đã đọc tin nhắn của đối phương
   Future<void> markMessagesAsRead(String matchId) async {
     final myId = currentUserId;
     if (myId == null) return;
@@ -83,12 +144,11 @@ class ChatService {
           .eq('match_id', matchId)
           .neq('sender_id', myId)
           .eq('is_read', false);
-    } catch (e) {
-      print('Error marking messages as read: $e');
+    } catch (error) {
+      debugPrint('Error marking messages as read: $error');
     }
   }
 
-  // Lắng nghe số cuộc hội thoại chưa đọc realtime
   Stream<int> streamUnreadConversationsCount() {
     final myId = currentUserId;
     if (myId == null) return Stream.value(0);
@@ -98,11 +158,11 @@ class ChatService {
         .stream(primaryKey: ['id'])
         .eq('is_read', false)
         .map((messages) {
-      final unreadMatches = messages
-          .where((m) => m['sender_id'] != myId)
-          .map((m) => m['match_id'].toString())
-          .toSet();
-      return unreadMatches.length;
-    });
+          final unreadMatches = messages
+              .where((message) => message['sender_id'] != myId)
+              .map((message) => message['match_id'].toString())
+              .toSet();
+          return unreadMatches.length;
+        });
   }
 }

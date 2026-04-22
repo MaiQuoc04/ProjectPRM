@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/app_branding.dart';
 import '../../../../services/auth_service.dart';
 import '../../../../services/profile_service.dart';
 
@@ -33,10 +34,22 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final List<String> _selectedTags = [];
   final _customTagController = TextEditingController();
   final List<String> _availableTags = [
-    'Âm nhạc', 'Du lịch', 'Thể thao', 'Đọc sách',
-    'Game', 'Thú cưng', 'Ẩm thực', 'Phim ảnh',
-    'Yoga', 'Cà phê', 'Nghệ thuật', 'Thiên nhiên',
-    'Nấu ăn', 'Chụp ảnh', 'Leo núi', 'Bơi lội',
+    'Âm nhạc',
+    'Du lịch',
+    'Thể thao',
+    'Đọc sách',
+    'Game',
+    'Thú cưng',
+    'Ẩm thực',
+    'Phim ảnh',
+    'Yoga',
+    'Cà phê',
+    'Nghệ thuật',
+    'Thiên nhiên',
+    'Nấu ăn',
+    'Chụp ảnh',
+    'Leo núi',
+    'Bơi lội',
   ];
 
   // ── Step 4: Upload ảnh ──
@@ -133,9 +146,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     final tag = _customTagController.text.trim();
     if (tag.isEmpty) return;
     if (_selectedTags.contains(tag) || _availableTags.contains(tag)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Sở thích này đã tồn tại')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Sở thích này đã tồn tại')));
       return;
     }
     setState(() {
@@ -197,8 +210,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       if (mounted) context.go('/discovery');
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Lỗi: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Lỗi: $e')));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -216,10 +230,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           children: [
             // ── Header ──
             Padding(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
               child: Column(
                 children: [
+                  const BrandBanner(compact: true),
+                  const SizedBox(height: 18),
                   // Progress dots
                   Row(
                     children: List.generate(_totalSteps, (i) {
@@ -253,8 +268,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           fontWeight: isCurrent
                               ? FontWeight.bold
                               : FontWeight.normal,
-                          color:
-                              isCurrent ? AppColors.primary : Colors.grey,
+                          color: isCurrent ? AppColors.primary : Colors.grey,
                         ),
                       );
                     }),
@@ -290,12 +304,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         onPressed: _back,
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 20, vertical: 16),
+                            horizontal: 20,
+                            vertical: 16,
+                          ),
                           shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(30)),
+                            borderRadius: BorderRadius.circular(30),
+                          ),
                         ),
-                        child: const Icon(Icons.arrow_back_ios_new,
-                            size: 18),
+                        child: const Icon(Icons.arrow_back_ios_new, size: 18),
                       ),
                     ),
                   Expanded(
@@ -321,23 +337,27 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           backgroundColor: Colors.transparent,
                           shadowColor: Colors.transparent,
                           shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(30)),
+                            borderRadius: BorderRadius.circular(30),
+                          ),
                         ),
                         child: _isLoading
                             ? const SizedBox(
                                 width: 22,
                                 height: 22,
                                 child: CircularProgressIndicator(
-                                    color: Colors.white, strokeWidth: 2.5),
+                                  color: Colors.white,
+                                  strokeWidth: 2.5,
+                                ),
                               )
                             : Text(
                                 _currentIndex < _totalSteps - 1
                                     ? 'Tiếp theo →'
                                     : '🎉 Hoàn thành',
                                 style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white),
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
                               ),
                       ),
                     ),
@@ -360,8 +380,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _stepHeader('Thông tin cơ bản 👤',
-              'Hãy cho chúng tôi biết bạn là ai'),
+          _stepHeader(
+            'Thông tin cơ bản 👤',
+            'Hãy cho chúng tôi biết bạn là ai',
+          ),
           const SizedBox(height: 28),
           _label('Tên hiển thị'),
           const SizedBox(height: 8),
@@ -386,9 +408,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           DropdownButtonFormField<String>(
             initialValue: _gender,
             decoration: _inputDecor('Giới tính', Icons.wc_outlined),
-            items: ['Nam', 'Nữ', 'Khác']
-                .map((g) => DropdownMenuItem(value: g, child: Text(g)))
-                .toList(),
+            items: [
+              'Nam',
+              'Nữ',
+              'Khác',
+            ].map((g) => DropdownMenuItem(value: g, child: Text(g))).toList(),
             onChanged: (v) {
               if (v != null) setState(() => _gender = v);
             },
@@ -407,8 +431,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _stepHeader('Viết về bản thân ✍️',
-              'Tiểu sử ấn tượng giúp bạn được chú ý hơn'),
+          _stepHeader(
+            'Viết về bản thân ✍️',
+            'Tiểu sử ấn tượng giúp bạn được chú ý hơn',
+          ),
           const SizedBox(height: 28),
           _label('Tiểu sử (Bio)'),
           const SizedBox(height: 8),
@@ -420,11 +446,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               hintText:
                   'VD: Mình thích cà phê sáng, phim kinh dị và những chuyến đi bất ngờ...',
               border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(14)),
+                borderRadius: BorderRadius.circular(14),
+              ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
-                borderSide:
-                    const BorderSide(color: AppColors.primary, width: 2),
+                borderSide: const BorderSide(
+                  color: AppColors.primary,
+                  width: 2,
+                ),
               ),
               filled: true,
               fillColor: const Color(0xFFFAFAFA),
@@ -439,15 +468,19 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             ),
             child: Row(
               children: [
-                const Icon(Icons.lightbulb_outline,
-                    color: AppColors.primary, size: 20),
+                const Icon(
+                  Icons.lightbulb_outline,
+                  color: AppColors.primary,
+                  size: 20,
+                ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
                     'Tip: Hãy đề cập sở thích, phong cách sống hoặc điều gì đó khiến bạn độc đáo!',
                     style: TextStyle(
-                        color: AppColors.primary.withValues(alpha: 0.85),
-                        fontSize: 13),
+                      color: AppColors.primary.withValues(alpha: 0.85),
+                      fontSize: 13,
+                    ),
                   ),
                 ),
               ],
@@ -462,8 +495,9 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   // STEP 3: Sở thích
   // ─────────────────────────────────────────
   Widget _buildTagsStep() {
-    final customTags =
-        _selectedTags.where((t) => !_availableTags.contains(t)).toList();
+    final customTags = _selectedTags
+        .where((t) => !_availableTags.contains(t))
+        .toList();
     final displayTags = [..._availableTags, ...customTags];
 
     return SingleChildScrollView(
@@ -471,8 +505,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _stepHeader('Sở thích của bạn 🎯',
-              'Chọn những gì bạn yêu thích để tìm người phù hợp'),
+          _stepHeader(
+            'Sở thích của bạn 🎯',
+            'Chọn những gì bạn yêu thích để tìm người phù hợp',
+          ),
           const SizedBox(height: 8),
           Text(
             '${_selectedTags.length} sở thích đã chọn',
@@ -487,14 +523,16 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               return AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
                 child: FilterChip(
-                  label: Text(tag,
-                      style: TextStyle(
-                        color: isSelected ? AppColors.primary : Colors.black87,
-                        fontWeight: isSelected
-                            ? FontWeight.bold
-                            : FontWeight.normal,
-                        fontSize: 13,
-                      )),
+                  label: Text(
+                    tag,
+                    style: TextStyle(
+                      color: isSelected ? AppColors.primary : Colors.black87,
+                      fontWeight: isSelected
+                          ? FontWeight.bold
+                          : FontWeight.normal,
+                      fontSize: 13,
+                    ),
+                  ),
                   selected: isSelected,
                   selectedColor: AppColors.primary.withValues(alpha: 0.15),
                   checkmarkColor: AppColors.primary,
@@ -525,17 +563,21 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   decoration: InputDecoration(
                     hintText: 'Thêm sở thích khác...',
                     hintStyle: const TextStyle(fontSize: 14),
-                    prefixIcon:
-                        const Icon(Icons.add, color: AppColors.primary),
+                    prefixIcon: const Icon(Icons.add, color: AppColors.primary),
                     border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(30)),
+                      borderRadius: BorderRadius.circular(30),
+                    ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(30),
                       borderSide: const BorderSide(
-                          color: AppColors.primary, width: 2),
+                        color: AppColors.primary,
+                        width: 2,
+                      ),
                     ),
                     contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 12),
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
                     isDense: true,
                     filled: true,
                     fillColor: const Color(0xFFFAFAFA),
@@ -549,9 +591,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 onPressed: _addCustomTag,
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 18, vertical: 14),
+                    horizontal: 18,
+                    vertical: 14,
+                  ),
                   shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(30)),
+                    borderRadius: BorderRadius.circular(30),
+                  ),
                 ),
                 child: const Text('Thêm'),
               ),
@@ -576,8 +621,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _stepHeader('Ảnh của bạn 📸',
-              'Thêm ảnh để tạo ấn tượng với mọi người'),
+          _stepHeader(
+            'Ảnh của bạn 📸',
+            'Thêm ảnh để tạo ấn tượng với mọi người',
+          ),
           const SizedBox(height: 24),
 
           // ── Avatar ──
@@ -595,10 +642,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       border: Border.all(
-                          color: _avatarBytes != null
-                              ? AppColors.primary
-                              : Colors.grey[300]!,
-                          width: 3),
+                        color: _avatarBytes != null
+                            ? AppColors.primary
+                            : Colors.grey[300]!,
+                        width: 3,
+                      ),
                       color: Colors.grey[100],
                     ),
                     child: ClipOval(
@@ -607,14 +655,19 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                           : Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.person_outline,
-                                    size: 50,
-                                    color: Colors.grey[400]),
+                                Icon(
+                                  Icons.person_outline,
+                                  size: 50,
+                                  color: Colors.grey[400],
+                                ),
                                 const SizedBox(height: 4),
-                                Text('Chọn ảnh',
-                                    style: TextStyle(
-                                        fontSize: 11,
-                                        color: Colors.grey[500])),
+                                Text(
+                                  'Chọn ảnh',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: Colors.grey[500],
+                                  ),
+                                ),
                               ],
                             ),
                     ),
@@ -625,8 +678,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       shape: BoxShape.circle,
                       color: AppColors.primary,
                     ),
-                    child: const Icon(Icons.camera_alt,
-                        color: Colors.white, size: 18),
+                    child: const Icon(
+                      Icons.camera_alt,
+                      color: Colors.white,
+                      size: 18,
+                    ),
                   ),
                 ],
               ),
@@ -639,8 +695,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             children: [
               _label('Ảnh trang cá nhân'),
               const Spacer(),
-              Text('${_photoFiles.length}/5',
-                  style: TextStyle(color: Colors.grey[500], fontSize: 13)),
+              Text(
+                '${_photoFiles.length}/5',
+                style: TextStyle(color: Colors.grey[500], fontSize: 13),
+              ),
             ],
           ),
           const SizedBox(height: 4),
@@ -652,8 +710,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           GridView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            gridDelegate:
-                const SliverGridDelegateWithFixedCrossAxisCount(
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 3,
               crossAxisSpacing: 8,
               mainAxisSpacing: 8,
@@ -670,21 +727,26 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       color: Colors.grey[50],
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                          color: AppColors.primary.withValues(alpha: 0.3),
-                          width: 1.5),
+                        color: AppColors.primary.withValues(alpha: 0.3),
+                        width: 1.5,
+                      ),
                     ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.add_photo_alternate_outlined,
-                            color: AppColors.primary.withValues(alpha: 0.6),
-                            size: 30),
+                        Icon(
+                          Icons.add_photo_alternate_outlined,
+                          color: AppColors.primary.withValues(alpha: 0.6),
+                          size: 30,
+                        ),
                         const SizedBox(height: 6),
-                        Text('Thêm ảnh',
-                            style: TextStyle(
-                                color: AppColors.primary
-                                    .withValues(alpha: 0.6),
-                                fontSize: 11)),
+                        Text(
+                          'Thêm ảnh',
+                          style: TextStyle(
+                            color: AppColors.primary.withValues(alpha: 0.6),
+                            fontSize: 11,
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -713,9 +775,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       child: Container(
                         padding: const EdgeInsets.all(3),
                         decoration: const BoxDecoration(
-                            color: Colors.red, shape: BoxShape.circle),
-                        child: const Icon(Icons.close,
-                            color: Colors.white, size: 14),
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.close,
+                          color: Colors.white,
+                          size: 14,
+                        ),
                       ),
                     ),
                   ),
@@ -746,36 +813,41 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title,
-            style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary)),
+        Text(
+          title,
+          style: const TextStyle(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: AppColors.textPrimary,
+          ),
+        ),
         const SizedBox(height: 6),
-        Text(subtitle,
-            style: const TextStyle(
-                fontSize: 14, color: AppColors.textSecondary)),
+        Text(
+          subtitle,
+          style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
+        ),
       ],
     );
   }
 
-  Widget _label(String text) => Text(text,
-      style: const TextStyle(
-          fontWeight: FontWeight.w600,
-          fontSize: 14,
-          color: AppColors.textPrimary));
+  Widget _label(String text) => Text(
+    text,
+    style: const TextStyle(
+      fontWeight: FontWeight.w600,
+      fontSize: 14,
+      color: AppColors.textPrimary,
+    ),
+  );
 
   InputDecoration _inputDecor(String hint, IconData icon) => InputDecoration(
-        hintText: hint,
-        prefixIcon: Icon(icon, color: Colors.grey),
-        border:
-            OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-          borderSide:
-              const BorderSide(color: AppColors.primary, width: 2),
-        ),
-        filled: true,
-        fillColor: const Color(0xFFFAFAFA),
-      );
+    hintText: hint,
+    prefixIcon: Icon(icon, color: Colors.grey),
+    border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(14),
+      borderSide: const BorderSide(color: AppColors.primary, width: 2),
+    ),
+    filled: true,
+    fillColor: const Color(0xFFFAFAFA),
+  );
 }

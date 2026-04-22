@@ -30,13 +30,22 @@ class _ChatScreenState extends State<ChatScreen> {
   final ScrollController _scrollController = ScrollController();
   final ChatService _chatService = ChatService();
   final AiService _aiService = AiService();
-  bool _isAiLoading = false;
+  late final Stream<List<Map<String, dynamic>>> _messagesStream;
+  final bool _isAiLoading = false;
 
   // Optimistic messages: tin nhắn gửi nhưng chưa có phản hồi từ server
   final List<Map<String, dynamic>> _optimisticMessages = [];
 
   // Cập nhật để lưu lịch sử chat cho AI
   List<Map<String, dynamic>> _latestMessages = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _messagesStream = _chatService.streamMessages(widget.matchId);
+  }
+
+  @override
   void dispose() {
     _messageController.dispose();
     _scrollController.dispose();
@@ -86,15 +95,22 @@ class _ChatScreenState extends State<ChatScreen> {
         if (idx != -1) _optimisticMessages[idx]['_error'] = true;
       });
       if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('Lỗi gửi tin: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Lỗi gửi tin: $e')));
       }
     }
   }
 
   void _showSmartOpener() {
     String selectedStyle = 'Tự nhiên';
-    final List<String> styles = ['Tự nhiên', 'Hài hước', 'Thả thính', 'Lịch sự', 'Quan tâm'];
+    final List<String> styles = [
+      'Tự nhiên',
+      'Hài hước',
+      'Thả thính',
+      'Lịch sự',
+      'Quan tâm',
+    ];
     List<String> suggestions = [];
     bool isFetching = false;
 
@@ -106,7 +122,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
       final bio = widget.otherBio ?? '';
       final tags = widget.otherTags ?? [];
-      
+
       String history = '';
       final lastMsgs = _latestMessages.length > 10
           ? _latestMessages.sublist(_latestMessages.length - 10)
@@ -158,16 +174,32 @@ class _ChatScreenState extends State<ChatScreen> {
                     Row(
                       children: [
                         ShaderMask(
-                          shaderCallback: (b) => AppColors.primaryGradient.createShader(b),
-                          child: const Icon(Icons.auto_awesome, color: Colors.white, size: 22),
+                          shaderCallback: (b) =>
+                              AppColors.primaryGradient.createShader(b),
+                          child: const Icon(
+                            Icons.auto_awesome,
+                            color: Colors.white,
+                            size: 22,
+                          ),
                         ),
                         const SizedBox(width: 8),
-                        const Text('AI Gợi ý tin nhắn',
-                            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                        const Text(
+                          'AI Gợi ý tin nhắn',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 16),
-                    const Text('Phong cách:', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+                    const Text(
+                      'Phong cách:',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
@@ -179,10 +211,16 @@ class _ChatScreenState extends State<ChatScreen> {
                             child: ChoiceChip(
                               label: Text(s),
                               selected: isSelected,
-                              selectedColor: AppColors.primary.withValues(alpha: 0.15),
+                              selectedColor: AppColors.primary.withValues(
+                                alpha: 0.15,
+                              ),
                               labelStyle: TextStyle(
-                                color: isSelected ? AppColors.primary : Colors.black87,
-                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                color: isSelected
+                                    ? AppColors.primary
+                                    : Colors.black87,
+                                fontWeight: isSelected
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
                               ),
                               onSelected: (selected) {
                                 if (selected && s != selectedStyle) {
@@ -200,7 +238,9 @@ class _ChatScreenState extends State<ChatScreen> {
                       const Center(
                         child: Padding(
                           padding: EdgeInsets.all(24.0),
-                          child: CircularProgressIndicator(color: AppColors.primary),
+                          child: CircularProgressIndicator(
+                            color: AppColors.primary,
+                          ),
                         ),
                       )
                     else if (suggestions.isNotEmpty)
@@ -221,24 +261,29 @@ class _ChatScreenState extends State<ChatScreen> {
     return Card(
       elevation: 0,
       color: Colors.grey[50],
-      shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: ListTile(
         title: Text(text, style: const TextStyle(fontSize: 14)),
-        trailing:
-            const Icon(Icons.send_rounded, color: AppColors.primary, size: 20),
+        trailing: const Icon(
+          Icons.send_rounded,
+          color: AppColors.primary,
+          size: 20,
+        ),
         onTap: () {
           Navigator.pop(sheetCtx);
           _messageController.text = text;
           _sendMessage();
         },
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       ),
     );
   }
 
-  Widget _buildMessageBubble(Map<String, dynamic> msg, String? currentUserId, bool isLastMyMessage) {
+  Widget _buildMessageBubble(
+    Map<String, dynamic> msg,
+    String? currentUserId,
+    bool isLastMyMessage,
+  ) {
     final isMe = msg['sender_id'] == currentUserId;
     final isOptimistic = msg['_isOptimistic'] == true;
     final isError = msg['_error'] == true;
@@ -247,22 +292,23 @@ class _ChatScreenState extends State<ChatScreen> {
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),
-        constraints:
-            BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.72),
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.of(context).size.width * 0.72,
+        ),
         child: Column(
-          crossAxisAlignment:
-              isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          crossAxisAlignment: isMe
+              ? CrossAxisAlignment.end
+              : CrossAxisAlignment.start,
           children: [
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               decoration: BoxDecoration(
                 color: isMe
                     ? (isError
-                        ? Colors.redAccent
-                        : isOptimistic
-                            ? AppColors.primary.withValues(alpha: 0.75)
-                            : AppColors.primary)
+                          ? Colors.redAccent
+                          : isOptimistic
+                          ? AppColors.primary.withValues(alpha: 0.75)
+                          : AppColors.primary)
                     : Colors.grey[200],
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(18),
@@ -274,8 +320,9 @@ class _ChatScreenState extends State<ChatScreen> {
               child: Text(
                 msg['content'],
                 style: TextStyle(
-                    color: isMe ? Colors.white : Colors.black87,
-                    fontSize: 15),
+                  color: isMe ? Colors.white : Colors.black87,
+                  fontSize: 15,
+                ),
               ),
             ),
             if (isOptimistic && !isError)
@@ -286,9 +333,10 @@ class _ChatScreenState extends State<ChatScreen> {
                   children: [
                     Icon(Icons.done, size: 12, color: Colors.grey[400]),
                     const SizedBox(width: 2),
-                    Text('Đang gửi...',
-                        style:
-                            TextStyle(fontSize: 10, color: Colors.grey[400])),
+                    Text(
+                      'Đang gửi...',
+                      style: TextStyle(fontSize: 10, color: Colors.grey[400]),
+                    ),
                   ],
                 ),
               )
@@ -299,14 +347,22 @@ class _ChatScreenState extends State<ChatScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
-                      msg['is_read'] == true ? Icons.done_all : Icons.done, 
-                      size: 12, 
-                      color: msg['is_read'] == true ? Colors.blue : Colors.grey[400]
+                      msg['is_read'] == true ? Icons.done_all : Icons.done,
+                      size: 12,
+                      color: msg['is_read'] == true
+                          ? Colors.blue
+                          : Colors.grey[400],
                     ),
                     const SizedBox(width: 2),
-                    Text(msg['is_read'] == true ? 'Đã xem' : 'Đã gửi',
-                        style:
-                            TextStyle(fontSize: 10, color: msg['is_read'] == true ? Colors.blue : Colors.grey[400])),
+                    Text(
+                      msg['is_read'] == true ? 'Đã xem' : 'Đã gửi',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: msg['is_read'] == true
+                            ? Colors.blue
+                            : Colors.grey[400],
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -336,9 +392,7 @@ class _ChatScreenState extends State<ChatScreen> {
             Navigator.push(
               context,
               MaterialPageRoute(
-                builder: (_) => ViewProfileScreen(
-                  profile: profileData,
-                ),
+                builder: (_) => ViewProfileScreen(profile: profileData),
               ),
             );
           },
@@ -354,8 +408,9 @@ class _ChatScreenState extends State<ChatScreen> {
                     ? Text(
                         name.isNotEmpty ? name[0].toUpperCase() : '?',
                         style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primary),
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primary,
+                        ),
                       )
                     : null,
               ),
@@ -363,11 +418,17 @@ class _ChatScreenState extends State<ChatScreen> {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(name,
-                      style: const TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.bold)),
-                  const Text('Đang hoạt động',
-                      style: TextStyle(fontSize: 12, color: Colors.green)),
+                  Text(
+                    name,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const Text(
+                    'Đang hoạt động',
+                    style: TextStyle(fontSize: 12, color: Colors.green),
+                  ),
                 ],
               ),
             ],
@@ -384,7 +445,7 @@ class _ChatScreenState extends State<ChatScreen> {
         children: [
           Expanded(
             child: StreamBuilder<List<Map<String, dynamic>>>(
-              stream: _chatService.streamMessages(widget.matchId),
+              stream: _messagesStream,
               builder: (context, snapshot) {
                 final serverMessages = snapshot.data ?? [];
 
@@ -398,11 +459,13 @@ class _ChatScreenState extends State<ChatScreen> {
                 WidgetsBinding.instance.addPostFrameCallback((_) {
                   if (mounted) {
                     _latestMessages = allMessages;
-                    
+
                     // Đánh dấu đã đọc nếu có tin nhắn mới từ đối phương
-                    final hasUnread = allMessages.any((m) => 
-                        m['sender_id'] != _chatService.currentUserId && 
-                        m['is_read'] != true);
+                    final hasUnread = allMessages.any(
+                      (m) =>
+                          m['sender_id'] != _chatService.currentUserId &&
+                          m['is_read'] != true,
+                    );
                     if (hasUnread) {
                       _chatService.markMessagesAsRead(widget.matchId);
                     }
@@ -412,8 +475,8 @@ class _ChatScreenState extends State<ChatScreen> {
                 if (snapshot.connectionState == ConnectionState.waiting &&
                     allMessages.isEmpty) {
                   return const Center(
-                      child: CircularProgressIndicator(
-                          color: AppColors.primary));
+                    child: CircularProgressIndicator(color: AppColors.primary),
+                  );
                 }
 
                 if (allMessages.isEmpty) {
@@ -421,11 +484,16 @@ class _ChatScreenState extends State<ChatScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.chat_bubble_outline,
-                            size: 60, color: Colors.grey[300]),
+                        Icon(
+                          Icons.chat_bubble_outline,
+                          size: 60,
+                          color: Colors.grey[300],
+                        ),
                         const SizedBox(height: 12),
-                        const Text('Hãy là người đầu tiên gửi tin!',
-                            style: TextStyle(color: Colors.grey)),
+                        const Text(
+                          'Hãy là người đầu tiên gửi tin!',
+                          style: TextStyle(color: Colors.grey),
+                        ),
                         const SizedBox(height: 8),
                         ElevatedButton.icon(
                           icon: const Icon(Icons.auto_awesome, size: 16),
@@ -439,20 +507,23 @@ class _ChatScreenState extends State<ChatScreen> {
 
                 _scrollToBottom();
 
-                final isMyAbsoluteLastMessage = allMessages.isNotEmpty && 
-                                                allMessages.last['sender_id'] == currentUserId;
+                final isMyAbsoluteLastMessage =
+                    allMessages.isNotEmpty &&
+                    allMessages.last['sender_id'] == currentUserId;
 
                 return ListView.builder(
                   controller: _scrollController,
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   itemCount: allMessages.length,
                   itemBuilder: (context, index) {
                     final isLast = index == allMessages.length - 1;
                     return _buildMessageBubble(
-                      allMessages[index], 
-                      currentUserId, 
-                      isLast && isMyAbsoluteLastMessage
+                      allMessages[index],
+                      currentUserId,
+                      isLast && isMyAbsoluteLastMessage,
                     );
                   },
                 );
@@ -472,9 +543,10 @@ class _ChatScreenState extends State<ChatScreen> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-              color: Colors.grey.withValues(alpha: 0.15),
-              spreadRadius: 1,
-              blurRadius: 8)
+            color: Colors.grey.withValues(alpha: 0.15),
+            spreadRadius: 1,
+            blurRadius: 8,
+          ),
         ],
       ),
       child: SafeArea(
@@ -485,7 +557,8 @@ class _ChatScreenState extends State<ChatScreen> {
                   ? const SizedBox(
                       width: 20,
                       height: 20,
-                      child: CircularProgressIndicator(strokeWidth: 2))
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
                   : const Icon(Icons.auto_awesome, color: AppColors.primary),
               onPressed: _isAiLoading ? null : _showSmartOpener,
               tooltip: 'AI gợi ý câu hỏi',
@@ -502,7 +575,9 @@ class _ChatScreenState extends State<ChatScreen> {
                   filled: true,
                   fillColor: Colors.grey[100],
                   contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16, vertical: 10),
+                    horizontal: 16,
+                    vertical: 10,
+                  ),
                 ),
                 onSubmitted: (_) => _sendMessage(),
                 textInputAction: TextInputAction.send,
