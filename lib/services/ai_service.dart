@@ -24,32 +24,32 @@ class AiService {
   }) async {
     if (apiKey == 'YOUR_GEMINI_API_KEY') {
       return [
-        'Vui long cap nhat Gemini API key trong ai_service.dart.',
-        'Mock: (Phong cach $style) Chao ban, rat vui duoc lam quen.',
-        'Mock: So thich cua ban la gi?',
+        'Vui lòng cập nhật Gemini API key trong ai_service.dart.',
+        'Mock: (Phong cách $style) Chào bạn, rất vui được làm quen.',
+        'Mock: Sở thích của bạn là gì?',
       ];
     }
 
     final hasHistory = chatHistory.trim().isNotEmpty;
     final contextPrompt = hasHistory
-        ? 'Hai nguoi dang tro chuyen. Duoi day la lich su cac tin nhan gan nhat:\n'
-              '$chatHistory\n\nHay goi y cau tiep theo de tra loi hoac tiep noi cau chuyen.'
-        : 'Day la lan dau tien hai nguoi nhan tin. Hay goi y cau mo loi tinh te '
-              'de bat dau cuoc tro chuyen.';
+        ? 'Hai người đang trò chuyện. Dưới đây là lịch sử các tin nhắn gần nhất:\n'
+              '$chatHistory\n\nHãy gợi ý câu tiếp theo để trả lời hoặc tiếp nối câu chuyện.'
+        : 'Đây là lần đầu tiên hai người nhắn tin. Hãy gợi ý câu mở lời tinh tế '
+              'để bắt đầu cuộc trò chuyện.';
 
     final prompt =
         '''
-Ban la mot AI ho tro ung dung hen ho. Nguoi dung dang muon nhan tin voi mot nguoi co thong tin sau:
-- Tieu su (Bio): $otherBio
-- So thich: ${otherTags.join(", ")}
+Bạn là một AI hỗ trợ ứng dụng hẹn hò. Người dùng đang muốn nhắn tin với một người có thông tin sau:
+- Tiểu sử (Bio): $otherBio
+- Sở thích: ${otherTags.join(", ")}
 
 $contextPrompt
 
-Yeu cau:
-- Phong cach nhan tin: $style
-- Hay tao ra dung 3 cau goi y bang tieng Viet.
-- Tu nhien, khong qua dai dong.
-- Moi cau tren mot dong rieng biet, khong danh so thu tu va khong dung ngoac kep.
+Yêu cầu:
+- Phong cách nhắn tin: $style
+- Hãy tạo ra đúng 3 câu gợi ý bằng Tiếng Việt có dấu chuẩn xác.
+- Tự nhiên, không quá dài dòng.
+- Mỗi câu trên một dòng riêng biệt, không đánh số thứ tự và không dùng ngoặc kép.
 ''';
 
     final content = [Content.text(prompt)];
@@ -111,39 +111,39 @@ Yeu cau:
     final hasHistory = chatHistory.trim().isNotEmpty;
     final firstTag = otherTags.isNotEmpty
         ? otherTags.first
-        : 'nhung dieu ban thich';
+        : 'những điều bạn thích';
 
     if (hasHistory) {
       switch (style) {
         case 'Hài hước':
           return [
-            'Nghe cuon qua, ke them cho minh mot doan nua di?',
-            'Cau chuyen nay dang hay day, phan tiep theo la gi vay?',
-            'Minh dang bi cuon vao day roi, ban ke tiep nhe?',
+            'Nghe cuốn quá, kể thêm cho mình một đoạn nữa đi?',
+            'Câu chuyện này đang hay đấy, phần tiếp theo là gì vậy?',
+            'Mình đang bị cuốn vào đây rồi, bạn kể tiếp nhé?',
           ];
         case 'Thả thính':
           return [
-            'Noi chuyen voi ban xong tu nhien minh thay hom nay de thuong hon do.',
-            'Ban cu rep kieu nay la minh muon noi chuyen mai thoi.',
-            'Cang noi chuyen minh cang thay ban co suc hut do.',
+            'Nói chuyện với bạn xong tự nhiên mình thấy hôm nay dễ thương hơn đó.',
+            'Bạn cứ rep kiểu này là mình muốn nói chuyện mãi thôi.',
+            'Càng nói chuyện mình càng thấy bạn có sức hút đó.',
           ];
         case 'Lịch sự':
           return [
-            'Minh thay cau chuyen nay kha thu vi, ban chia se them duoc khong?',
-            'Cach ban noi chuyen lam minh rat thoai mai, minh muon nghe them.',
-            'Ban dang nhac den mot dieu kha hay, ban ke tiep nhe?',
+            'Mình thấy câu chuyện này khá thú vị, bạn chia sẻ thêm được không?',
+            'Cách bạn nói chuyện làm mình rất thoải mái, mình muốn nghe thêm.',
+            'Bạn đang nhắc đến một điều khá hay, bạn kể tiếp nhé?',
           ];
         case 'Quan tâm':
           return [
-            'Nghe vay minh thay dieu do chac han co y nghia voi ban, cam xuc cua ban luc do the nao?',
-            'Chi tiet do lam minh to mo, dieu gi khien ban an tuong nhat vay?',
-            'Minh muon hieu ban hon mot chut, ban ke tiep cho minh nghe nhe?',
+            'Nghe vậy mình thấy điều đó chắc hẳn có ý nghĩa với bạn, cảm xúc của bạn lúc đó thế nào?',
+            'Chi tiết đó làm mình tò mò, điều gì khiến bạn ấn tượng nhất vậy?',
+            'Mình muốn hiểu bạn hơn một chút, bạn kể tiếp cho mình nghe nhé?',
           ];
         default:
           return [
-            'Nghe hay that, ban ke them cho minh nghe duoc khong?',
-            'Minh thay cau chuyen nay kha thu vi do, roi sao nua nhi?',
-            'Ban noi chuyen cuon that, minh muon nghe tiep.',
+            'Nghe hay thật, bạn kể thêm cho mình nghe được không?',
+            'Mình thấy câu chuyện này khá thú vị đó, rồi sao nữa nhỉ?',
+            'Bạn nói chuyện cuốn thật, mình muốn nghe tiếp.',
           ];
       }
     }
@@ -151,33 +151,33 @@ Yeu cau:
     switch (style) {
       case 'Hài hước':
         return [
-          'Chao ban, neu noi ve $firstTag thi ban thuoc team chuyen gia hay team cam tinh vay?',
-          'Minh thay vibe cua ban kha thu vi, mo dau bang chuyen $firstTag co bi lo de khong?',
-          'Hello ban, cho minh hoi nhe: voi $firstTag thi ban co phai nguoi rat kho tinh khong?',
+          'Chào bạn, nếu nói về $firstTag thì bạn thuộc team chuyên gia hay team cảm tính vậy?',
+          'Mình thấy vibe của bạn khá thú vị, mở đầu bằng chuyện $firstTag có bị lố đê không?',
+          'Hello bạn, cho mình hỏi nhé: với $firstTag thì bạn có phải người rất khó tính không?',
         ];
       case 'Thả thính':
         return [
-          'Chao ban, minh ghe qua va thay ban de lai an tuong kha manh do.',
-          'Minh nghi bat dau cuoc tro chuyen voi ban la quyet dinh dung dan day.',
-          'Hi ban, mot loi chao de thuong chac hop voi ban hon la mo bai qua nghiem tuc.',
+          'Chào bạn, mình ghé qua và thấy bạn để lại ấn tượng khá mạnh đó.',
+          'Mình nghĩ bắt đầu cuộc trò chuyện với bạn là quyết định đúng đắn đấy.',
+          'Hi bạn, một lời chào dễ thương chắc hợp với bạn hơn là mở bài quá nghiêm túc.',
         ];
       case 'Lịch sự':
         return [
-          'Chao ban, minh rat vui duoc lam quen. Ban thuong quan tam nhat den $firstTag phai khong?',
-          'Xin chao, minh thay ho so cua ban kha thu vi, dac biet la phan $firstTag.',
-          'Rat vui duoc ket noi voi ban. Dieu gi o $firstTag khien ban thich nhat vay?',
+          'Chào bạn, mình rất vui được làm quen. Bạn thường quan tâm nhất đến $firstTag phải không?',
+          'Xin chào, mình thấy hồ sơ của bạn khá thú vị, đặc biệt là phần $firstTag.',
+          'Rất vui được kết nối với bạn. Điều gì ở $firstTag khiến bạn thích nhất vậy?',
         ];
       case 'Quan tâm':
         return [
-          'Chao ban, minh to mo dieu gi trong $firstTag khien ban thay vui nhat?',
-          'Hi ban, neu duoc chon mot dieu de ke ve ban than, ban se bat dau tu $firstTag chu?',
-          'Minh thay $firstTag kha hop de mo dau cau chuyen, ban nghi sao?',
+          'Chào bạn, mình tò mò điều gì trong $firstTag khiến bạn thấy vui nhất?',
+          'Hi bạn, nếu được chọn một điều để kể về bản thân, bạn sẽ bắt đầu từ $firstTag chứ?',
+          'Mình thấy $firstTag khá hợp để mở đầu câu chuyện, bạn nghĩ sao?',
         ];
       default:
         return [
-          'Chao ban, rat vui duoc lam quen.',
-          'Minh thay ho so cua ban kha thu vi, dac biet la phan $firstTag.',
-          'Neu bat dau bang mot chu de nhe nhang, minh muon nghe ban ke ve $firstTag.',
+          'Chào bạn, rất vui được làm quen.',
+          'Mình thấy hồ sơ của bạn khá thú vị, đặc biệt là phần $firstTag.',
+          'Nếu bắt đầu bằng một chủ đề nhẹ nhàng, mình muốn nghe bạn kể về $firstTag.',
         ];
     }
   }
