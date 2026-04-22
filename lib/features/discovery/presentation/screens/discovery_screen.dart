@@ -58,7 +58,7 @@ class _DiscoveryScreenState extends State<DiscoveryScreen>
         ),
         actions: [
           StreamBuilder<int>(
-            stream: _chatService.streamUnreadConversationsCount(),
+            stream: _chatService.streamTotalMatchesCount(),
             builder: (context, snapshot) {
               final unreadCount = snapshot.data ?? 0;
               return Stack(

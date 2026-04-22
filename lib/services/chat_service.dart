@@ -149,6 +149,21 @@ class ChatService {
     }
   }
 
+  Stream<int> streamTotalMatchesCount() {
+    final myId = currentUserId;
+    if (myId == null) return Stream.value(0);
+
+    return _supabase
+        .from('matches')
+        .stream(primaryKey: ['id'])
+        .map((matches) {
+          // Lọc những match có mình tham gia, đề phòng RLS chưa chặt hoặc bị cache
+          final myMatches = matches.where(
+              (m) => m['user1_id'] == myId || m['user2_id'] == myId);
+          return myMatches.length;
+        });
+  }
+
   Stream<int> streamUnreadConversationsCount() {
     final myId = currentUserId;
     if (myId == null) return Stream.value(0);
